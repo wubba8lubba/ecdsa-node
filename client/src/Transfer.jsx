@@ -1,7 +1,9 @@
 import { useState } from "react";
 import server from "./server";
+import TransactionUtil from "./transaction-util.js";
+import KeyUtil from "./key-util.js";
 
-function Transfer({ address, setBalance }) {
+function Transfer({ privateKey, setBalance }) {
   const [sendAmount, setSendAmount] = useState("");
   const [recipient, setRecipient] = useState("");
 
@@ -9,18 +11,30 @@ function Transfer({ address, setBalance }) {
 
   async function transfer(evt) {
     evt.preventDefault();
-
     try {
-      const {
-        data: { balance },
-      } = await server.post(`send`, {
+      const address = KeyUtil.getPublicKey(privateKey);
+      const transaction = {
         sender: address,
         amount: parseInt(sendAmount),
         recipient,
+      };
+
+      const signature = await TransactionUtil.signTransaction(
+        privateKey,
+        transaction
+      );
+
+      const {
+        data: { balance },
+      } = await server.post(`send`, {
+        transaction,
+        signature,
       });
+
       setBalance(balance);
     } catch (ex) {
-      alert(ex.response.data.message);
+      console.log(ex);
+      alert(ex.response?.data?.message || ex.message);
     }
   }
 
